@@ -1,0 +1,41 @@
+
+// to disable cod order for gst users  */
+
+add_action('woocommerce_checkout_update_order_review', 'check_gst_and_disable_cod');
+
+function check_gst_and_disable_cod($posted_data) {
+    parse_str($posted_data, $output);
+    if (!empty($output['billing_gst_no'])) {
+        WC()->session->set('disable_cod', true);
+    } else {
+        WC()->session->set('disable_cod', false);
+    }
+}
+
+// Hook to filter available payment gateways
+add_filter('woocommerce_available_payment_gateways', 'conditionally_disable_cod_gateway');
+
+function conditionally_disable_cod_gateway($available_gateways) {
+    if (is_checkout() && WC()->session->get('disable_cod') === true) {
+        if (isset($available_gateways['cod'])) {
+            unset($available_gateways['cod']);
+        }
+    }
+    return $available_gateways;
+}
+
+// Add jQuery to the checkout page to trigger the update order review when the billing_gst_no field changes
+add_action('wp_footer', 'custom_checkout_field_script');
+function custom_checkout_field_script() {
+    if (is_checkout()) {
+        ?>
+        <script type="text/javascript">
+            jQuery(function($) {
+                $('body').on('change', '#billing_gst_no', function() {
+                    $('body').trigger('update_checkout');
+                });
+            });
+        </script>
+        <?php
+    }
+}

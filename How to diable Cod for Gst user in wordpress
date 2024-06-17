@@ -39,3 +39,105 @@ function custom_checkout_field_script() {
         <?php
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+The provided code snippet is designed to disable the Cash on Delivery (COD) payment option for WooCommerce customers who enter a GST (Goods and Services Tax) number during the checkout process. Here’s a detailed explanation of how each part of the code works:
+
+1. Hook to Update Order Review Based on GST Number
+
+add_action('woocommerce_checkout_update_order_review', 'check_gst_and_disable_cod');
+
+function check_gst_and_disable_cod($posted_data) {
+    parse_str($posted_data, $output);
+    if (!empty($output['billing_gst_no'])) {
+        WC()->session->set('disable_cod', true);
+    } else {
+        WC()->session->set('disable_cod', false);
+    }
+}
+
+
+Purpose: This part listens for updates to the checkout page.
+How It Works:
+The woocommerce_checkout_update_order_review hook is triggered whenever the order review is updated (e.g., when the user changes shipping or billing information).
+The check_gst_and_disable_cod function parses the posted data to check if the billing_gst_no field is filled.
+If the billing_gst_no field is not empty, it sets a session variable disable_cod to true, otherwise, it sets it to false.
+
+
+
+2. Hook to Filter Available Payment Gateways
+
+
+add_filter('woocommerce_available_payment_gateways', 'conditionally_disable_cod_gateway');
+
+function conditionally_disable_cod_gateway($available_gateways) {
+    if (is_checkout() && WC()->session->get('disable_cod') === true) {
+        if (isset($available_gateways['cod'])) {
+            unset($available_gateways['cod']);
+        }
+    }
+    return $available_gateways;
+}
+
+
+
+Purpose: This part controls which payment gateways are available at checkout.
+How It Works:
+The woocommerce_available_payment_gateways filter allows customization of the payment methods available on the checkout page.
+The conditionally_disable_cod_gateway function checks if the session variable disable_cod is true.
+If disable_cod is true and the COD payment method is available, it removes COD from the list of available payment gateways.
+
+
+
+
+
+
+
+3. jQuery Script to Trigger Checkout Update
+
+
+
+
+
+
+add_action('wp_footer', 'custom_checkout_field_script');
+
+function custom_checkout_field_script() {
+    if (is_checkout()) {
+        ?>
+        <script type="text/javascript">
+            jQuery(function($) {
+                $('body').on('change', '#billing_gst_no', function() {
+                    $('body').trigger('update_checkout');
+                });
+            });
+        </script>
+        <?php
+    }
+}
+
+
+
+Purpose: This part adds a jQuery script to the footer of the checkout page to dynamically update the order review when the GST number field changes.
+How It Works:
+The custom_checkout_field_script function checks if the current page is the checkout page.
+If it is, it outputs a jQuery script that listens for changes to the #billing_gst_no field.
+When a change is detected, it triggers the update_checkout event, causing WooCommerce to refresh the order review and re-run the check_gst_and_disable_cod function.
+Summary
+The code ensures that if a customer enters a GST number during checkout, the COD payment option is disabled.
+It uses WooCommerce hooks to monitor changes to the checkout form and filter the available payment gateways based on the presence of a GST number.
+A jQuery script is included to trigger the necessary updates dynamically when the GST field is changed by the user.
+
+
+
+
+
